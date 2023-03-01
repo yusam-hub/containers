@@ -26,16 +26,20 @@ class JsonObject implements JsonObjectInterface
         foreach($source as $k => $v) {
             if ($refObj->hasProperty($k)) {
                 $p = $refObj->getProperty($k);
-                if ($p->isPublic() && !$p->isStatic()) {
-                    $pv = $p->getValue($this);
-                    if ($pv instanceof ArrayableInterface) {
-                        $pv->import($v);
-                    } else {
-                        $p->setValue($this, $v);
+                if (!$p->isStatic()) {
+                    if ($p->isPublic()) {
+                        $pv = $p->getValue($this);
+                        if ($pv instanceof ArrayableInterface) {
+                            $pv->import($v);
+                        } else {
+                            $p->setValue($this, $v);
+                        }
+                    } elseif ($p->isPrivate() || $p->isProtected()) {
+                        $this->reflectionSetMethodInvoke($k, $v);
                     }
                 }
-            } elseif ($refObj->hasProperty('_' . $k)) {
-                $this->reflectionGetPropertyInvoke($refObj, $k, $v);
+            } else  {
+                $this->reflectionSetMethodInvoke($k, $v);
             }
         }
     }
@@ -55,59 +59,54 @@ class JsonObject implements JsonObjectInterface
 
         foreach ($properties as $property) {
 
-            if ($property->isPublic() && !$property->isStatic()) {
+            if (!$property->isStatic()) {
 
-                if ($property->hasType()) {
+                if ($property->isPublic()) {
 
-                    $v = $property->getValue($this);
+                    if ($property->hasType()) {
 
-                    if ($v instanceof ArrayableInterface) {
+                        $v = $property->getValue($this);
 
-                        $out[$property->getName()] = $v->toArray();
+                        if ($v instanceof ArrayableInterface) {
 
-                    } elseif (is_array($v)) {
+                            $out[$property->getName()] = $v->toArray();
 
-                        if (!empty($v)) {
-                            foreach ($v as $vKey => $vValue) {
+                        } elseif (is_array($v)) {
 
-                                if ($vValue instanceof ArrayableInterface) {
+                            if (!empty($v)) {
+                                foreach ($v as $vKey => $vValue) {
 
-                                    $out[$property->getName()][$vKey] = $vValue->toArray();
+                                    if ($vValue instanceof ArrayableInterface) {
 
-                                } else {
+                                        $out[$property->getName()][$vKey] = $vValue->toArray();
 
-                                    $out[$property->getName()][$vKey] = $vValue;
+                                    } else {
 
+                                        $out[$property->getName()][$vKey] = $vValue;
+
+                                    }
                                 }
+                            } else {
+                                $out[$property->getName()] = [];
                             }
+
                         } else {
-                            $out[$property->getName()] = [];
-                        }
 
-                    } else {
-
-                        $out[$property->getName()] = $v;
-
-                    }
-                }
-            } elseif (($property->isPrivate() || $property->isProtected()) && !$property->isStatic()) {
-
-                $methodName = "get" . ltrim(ucfirst($property->getName()),'_');
-
-                if ($refObj->hasMethod($methodName)) {
-
-                    $m = $refObj->getMethod($methodName);
-
-                    if ($m->isPublic()) {
-
-                        if ($m->getNumberOfParameters() === 0) {
-
-                            $out[ltrim($property->getName(),'_')] = $m->invoke($this);
+                            $out[$property->getName()] = $v;
 
                         }
                     }
+                } elseif ($property->isPrivate() || $property->isProtected()) {
+
+                    $valueInvoked = $this->reflectionGetMethodInvoke($property->getName(), $isInvoked);
+                    if ($isInvoked) {
+                        $out[$property->getName()] = $valueInvoked;
+                    }
+
                 }
-            }
+
+            } //end !$property->isStatic()
+
         }
 
         return array_filter($out, function($v, $k) use($filterKeys) {
@@ -117,26 +116,12 @@ class JsonObject implements JsonObjectInterface
 
     /**
      * @param string $name
-     * @return mixed|void
+     * @return mixed
      * @throws \ReflectionException
      */
     public function __get(string $name)
     {
-        $refObj = new \ReflectionClass($this);
-        if ($refObj->hasProperty('_' . $name)) {
-            $p = $refObj->getProperty('_' . $name);
-            if (($p->isPrivate() || $p->isProtected()) && !$p->isStatic()) {
-                $methodName = "get" . ucfirst($name);
-                if ($refObj->hasMethod($methodName)) {
-                    $m = $refObj->getMethod($methodName);
-                    if ($m->isPublic()) {
-                        if ($m->getNumberOfParameters() === 0) {
-                            return $m->invoke($this);
-                        }
-                    }
-                }
-            }
-        }
+        return $this->reflectionGetMethodInvoke($name, $isInvoked);
     }
 
     /**
@@ -147,32 +132,49 @@ class JsonObject implements JsonObjectInterface
      */
     public function __set(string $name, $value): void
     {
-        $refObj = new \ReflectionClass($this);
-        if ($refObj->hasProperty('_' . $name)) {
-            $this->reflectionGetPropertyInvoke($refObj, $name, $value);
-        }
+        $this->reflectionSetMethodInvoke($name, $value);
     }
 
     /**
-     * @param \ReflectionClass $refObj
      * @param string $name
      * @param $value
      * @return void
      * @throws \ReflectionException
      */
-    private function reflectionGetPropertyInvoke(\ReflectionClass $refObj, string $name, $value): void
+    private function reflectionSetMethodInvoke(string $name, $value): void
     {
-        $p = $refObj->getProperty('_' . $name);
-        if (($p->isPrivate() || $p->isProtected()) && !$p->isStatic()) {
-            $methodName = "set" . ucfirst($name);
-            if ($refObj->hasMethod($methodName)) {
-                $m = $refObj->getMethod($methodName);
-                if ($m->isPublic()) {
-                    if ($m->getNumberOfParameters() === 1) {
-                        $m->invoke($this, $value);
-                    }
+        $refObj = new \ReflectionClass($this);
+        $methodName = "set" . ucfirst($name);
+        if ($refObj->hasMethod($methodName)) {
+            $m = $refObj->getMethod($methodName);
+            if ($m->isPublic() && !$m->isStatic()) {
+                if ($m->getNumberOfParameters() === 1) {
+                    $m->invoke($this, $value);
                 }
             }
         }
+    }
+
+    /**
+     * @param string $name
+     * @param $isInvoked
+     * @return mixed|null
+     * @throws \ReflectionException
+     */
+    private function reflectionGetMethodInvoke(string $name, &$isInvoked)
+    {
+        $isInvoked = false;
+        $refObj = new \ReflectionClass($this);
+        $methodName = "get" . ucfirst($name);
+        if ($refObj->hasMethod($methodName)) {
+            $m = $refObj->getMethod($methodName);
+            if ($m->isPublic() && !$m->isStatic()) {
+                if ($m->getNumberOfParameters() === 0) {
+                    $isInvoked = true;
+                    return $m->invoke($this);
+                }
+            }
+        }
+        return null;
     }
 }
