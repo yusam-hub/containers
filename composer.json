@@ -3,20 +3,13 @@
     "description": "yusam-hub/json-ext",
     "type": "package",
     "minimum-stability": "stable",
-    "repositories": {
-        "yusam-hub/debug": {
-            "type": "git",
-            "url": "https://github.com/yusam-hub/debug.git"
-        }
-    },
     "require": {
         "php": "^7.4|^8.0|^8.1|^8.2",
         "ext-curl": "*",
         "ext-json": "*",
         "ext-iconv": "*",
         "ext-mbstring": "*",
-        "ext-fileinfo": "*",
-        "yusam-hub/debug": "dev-master"
+        "ext-fileinfo": "*"
     },
     "require-dev": {
         "phpunit/phpunit": "^9.5"
