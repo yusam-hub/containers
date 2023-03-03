@@ -5,17 +5,20 @@ namespace YusamHub\JsonExt;
 use YusamHub\JsonExt\Interfaces\ArrayableInterface;
 use YusamHub\JsonExt\Interfaces\JsonObjectInterface;
 use YusamHub\JsonExt\Traits\JsonableTrait;
+use YusamHub\JsonExt\Traits\CommonTrait;
 
 class JsonObject implements JsonObjectInterface
 {
     use JsonableTrait;
+    use CommonTrait;
 
     /**
      * @param array|string|null $source
+     * @param array $filterKeys
      * @return void
      * @throws \ReflectionException
      */
-    public function import($source): void
+    public function import($source, array $filterKeys = []): void
     {
         if (is_null($source)) return;
 
@@ -42,6 +45,26 @@ class JsonObject implements JsonObjectInterface
                 $this->reflectionSetMethodInvoke($k, $v);
             }
         }
+    }
+
+    /**
+     * @param array|string|null $keyValuePairs
+     * @return bool
+     * @throws \ReflectionException
+     */
+    public function isEqual($keyValuePairs): bool
+    {
+        if (empty($keyValuePairs)) return false;
+
+        if (is_string($keyValuePairs)) {
+            $keyValuePairs = (array) json_decode($keyValuePairs, true);
+        }
+
+        if (!is_array($keyValuePairs)) {
+            throw new \RuntimeException("Invalid incoming type value, required string or array");
+        }
+
+        return empty(array_diff($keyValuePairs, $this->toArray(array_keys($keyValuePairs))));
     }
 
     /**
@@ -177,4 +200,5 @@ class JsonObject implements JsonObjectInterface
         }
         return null;
     }
+
 }

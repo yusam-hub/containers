@@ -1,6 +1,6 @@
 <?php
 
-namespace YusamHub\JsonExt\Tests;
+namespace YusamHub\JsonExt\Tests\Demo;
 
 use YusamHub\JsonExt\JsonObject;
 

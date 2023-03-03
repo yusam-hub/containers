@@ -6,68 +6,38 @@ use YusamHub\JsonExt\Interfaces\ArrayableInterface;
 use YusamHub\JsonExt\Interfaces\JsonArrayInterface;
 use YusamHub\JsonExt\Interfaces\JsonObjectInterface;
 use YusamHub\JsonExt\Traits\JsonableTrait;
+use YusamHub\JsonExt\Traits\CommonTrait;
+use YusamHub\JsonExt\Traits\JsonArrayIteratorTrait;
 
 class JsonArray implements JsonArrayInterface, \Iterator
 {
+    use JsonArrayIteratorTrait;
     use JsonableTrait;
-
-    /**
-     * @var string
-     */
-    private string $_rowClass;
+    use CommonTrait;
 
     /**
      * @var array
      */
     private array $_rows = [];
 
-    private int $iteratorPosition;
-
     /**
      * @param string $rowClass
      */
     public function __construct(string $rowClass)
     {
-        $this->iteratorPosition = 0;
-        $this->_rowClass = $rowClass;
-    }
-
-    public function current()
-    {
-        return $this->_rows[$this->iteratorPosition];
-    }
-
-    public function next()
-    {
-        $this->iteratorPosition++;
-    }
-
-    public function key()
-    {
-        return $this->iteratorPosition;
-    }
-
-    public function valid()
-    {
-        return isset($this->_rows[$this->iteratorPosition]);
-    }
-
-    public function rewind()
-    {
-        $this->iteratorPosition = 0;
+        $this->init($rowClass);
     }
 
     /**
      * @param object|array|string|null $source
      * @return object
-     * @throws \Exception
      */
     public function addRow($source = null): object
     {
         if (is_object($source)) {
             $o = $source;
             if (!($o instanceof JsonObjectInterface)) {
-                throw new \Exception("Object is not " . JsonObjectInterface::class);
+                throw new \RuntimeException("Object is not " . JsonObjectInterface::class);
             }
         } else {
             $o = $this->newRowObj($source);
@@ -107,32 +77,43 @@ class JsonArray implements JsonArrayInterface, \Iterator
     }
 
     /**
-     * @param array $attributes
+     * @param array|string|null $keyValuePairs
      * @return object|null
      */
-    public function findFirstByAttributes(array $attributes): ?object
+    public function findFirst($keyValuePairs): ?object
     {
+        if (empty($keyValuePairs)) return null;
 
-        if (empty($attributes)) return null;
         if (!$this->countRows()) return null;
 
         foreach($this->_rows as $row) {
-            if ($row instanceof ArrayableInterface) {
-                $found = 0;
-                foreach($attributes as $k => $v) {
-                    $testRow = $row->toArray([$k]);
-                    if (!empty($testRow) && isset($testRow[$k])) {
-                        if (strpos(strval($testRow[$k]), strval($v)) !== false) {
-                            $found++;
-                        }
-                    }
-                }
-                if ($found > 0) {
-                    return $row;
-                }
+            if ($row instanceof JsonObjectInterface && $row->isEqual($keyValuePairs)) {
+                return $row;
             }
         }
+
         return null;
+    }
+
+    /**
+     * @param array|string|null $keyValuePairs
+     * @return object|null
+     */
+    public function findAll($keyValuePairs): object
+    {
+        $out = new static($this->_rowClass);
+
+        if (empty($keyValuePairs)) return $out;
+
+        if (!$this->countRows()) return $out;
+
+        foreach($this->_rows as $row) {
+            if ($row instanceof JsonObjectInterface && $row->isEqual($keyValuePairs)) {
+                $out->addRow($row);
+            }
+        }
+
+        return $out;
     }
 
     /**
@@ -167,9 +148,10 @@ class JsonArray implements JsonArrayInterface, \Iterator
 
     /**
      * @param array|string|null $source
+     * @param array $filterKeys
      * @return void
      */
-    public function import($source): void
+    public function import($source, array $filterKeys = []): void
     {
         if (is_null($source)) return;
 
@@ -197,6 +179,5 @@ class JsonArray implements JsonArrayInterface, \Iterator
         }
         return $out;
     }
-
 
 }

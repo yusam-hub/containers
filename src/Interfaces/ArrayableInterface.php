@@ -8,10 +8,11 @@ namespace YusamHub\JsonExt\Interfaces;
 interface ArrayableInterface
 {
     /**
-     * @param array|string|null $source
+     * @param array|null $source
+     * @param array $filterKeys
      * @return void
      */
-    public function import($source): void;
+    public function fromArray(?array $source, array $filterKeys = []): void;
 
     /**
      * @param array $filterKeys

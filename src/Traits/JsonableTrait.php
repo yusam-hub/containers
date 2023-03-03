@@ -9,10 +9,21 @@ trait JsonableTrait
      * @return int
      * @throws \ReflectionException
      */
-    protected function getFunctionNumberOfParameters(callable $callable): int
+    private function getFunctionNumberOfParameters(callable $callable): int
     {
         $CReflection = is_array($callable) ? new \ReflectionMethod($callable[0], $callable[1]) : new \ReflectionFunction($callable);
         return $CReflection->getNumberOfParameters();
+    }
+
+    /**
+     * @param string|null $source
+     * @param array $filterKeys
+     * @return void
+     * @throws \ReflectionException
+     */
+    public function fromJson(?string $source, array $filterKeys = []): void
+    {
+        $this->import($source, $filterKeys);
     }
 
     /**
@@ -41,21 +52,12 @@ trait JsonableTrait
 
             $out = (array) $this;
 
-            $out = array_filter($out, function($v, $k) use($filterKeys) {
-                return empty($filterKeys) || in_array($k, $filterKeys);
-            }, ARRAY_FILTER_USE_BOTH);
-
         }
 
-        return json_encode($out, $jsonOptions);
-    }
+        $out = array_filter($out, function($v, $k) use($filterKeys) {
+            return empty($filterKeys) || in_array($k, $filterKeys);
+        }, ARRAY_FILTER_USE_BOTH);
 
-    /**
-     * @return string
-     * @throws \ReflectionException
-     */
-    public function __toString(): string
-    {
-        return $this->toJson();
+        return json_encode($out, $jsonOptions);
     }
 }
