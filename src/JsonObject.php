@@ -92,7 +92,11 @@ class JsonObject implements JsonObjectInterface
 
                     if ($property->hasType()) {
 
-                        $v = $property->getValue($this);
+                        if ($property->isInitialized($this)) {
+                            $v = $property->getValue($this);
+                        } else {
+                            $v = null;
+                        }
 
                         if ($v instanceof ArrayableInterface) {
 
