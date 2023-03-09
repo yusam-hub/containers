@@ -31,9 +31,13 @@ class JsonObject implements JsonObjectInterface
                 $p = $refObj->getProperty($k);
                 if (!$p->isStatic()) {
                     if ($p->isPublic()) {
-                        $pv = $p->getValue($this);
-                        if ($pv instanceof ArrayableInterface) {
-                            $pv->import($v);
+                        if ($p->isInitialized($this))  {
+                            $pv = $p->getValue($this);
+                            if ($pv instanceof ArrayableInterface) {
+                                $pv->import($v);
+                            } else {
+                                $p->setValue($this, $v);
+                            }
                         } else {
                             $p->setValue($this, $v);
                         }
