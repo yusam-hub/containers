@@ -19,7 +19,7 @@ trait CommonTrait
      * @return array
      * @throws \ReflectionException
      */
-    public function jsonSerialize()
+    public function jsonSerialize(): array
     {
         return $this->toArray();
     }

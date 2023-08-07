@@ -2,7 +2,7 @@
 
 namespace YusamHub\JsonExt\Interfaces;
 
-interface JsonObjectInterface extends ArrayableInterface, JsonableInterface, ImportableInterface, \JsonSerializable
+interface JsonObjectInterface extends ArrayableInterface, JsonableInterface, ImportableInterface, JsonSerializable
 {
     /**
      * @param array|string|null $keyValuePairs
